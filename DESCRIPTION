@@ -1,0 +1,16 @@
+Package: GPD
+Title: What the Package Does (one line, title case)
+Version: 0.0.0.9000
+Authors@R: person("Ginny Xiaohe", "Li", email = "ginnyli056@gmail.com", role = c("aut", "cre"))
+Description: mapping mutations to protein units.
+Depends: R (>= 3.5.0)
+License: MIT + file LICENSE
+Imports:
+	data.table,
+	dplyr,
+	magrittr,
+	survival,
+	qvalue
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1.9000
