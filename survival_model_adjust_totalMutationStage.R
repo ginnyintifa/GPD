@@ -44,7 +44,7 @@ cdr_tidy_up_for_model = function(interest_variable_info, unite_data, race_group_
 
 }
 
-
+ 
 
 piu_counts_cdr_clinical_unite = function(piu_count_filename,
                                          cdr_clinical,
@@ -53,6 +53,13 @@ piu_counts_cdr_clinical_unite = function(piu_count_filename,
                                          output_name)
 
 {
+  
+  # 
+  # piu_count_filename = piu_filename
+  # cdr_clinical = this_cdr
+  # patient_sum_min = patient_sum_min
+  # output_dir = output_dir
+  # output_name = paste0(mutation_type,"_piu_cdr_clinical_unite.tsv")
 
   piu_count_df = fread(piu_count_filename,
                        stringsAsFactors = F)
@@ -67,7 +74,7 @@ piu_counts_cdr_clinical_unite = function(piu_count_filename,
   piu_count_sel = piu_count_fsel%>%
     dplyr::mutate(piu_info = paste(uniprot_accession, start_position,end_position,unit_label, unit_name, gene_name, gene_id, sep = "_"))%>%
     dplyr::mutate(gene_info = paste(gene_name, gene_id,sep = "_"))%>%
-    dplyr::select(uniprot_accession, start_position, end_position, unit_name, gene_name, gene_id, unit_label,gene_info, piu_info, row_sum,
+    dplyr::select(uniprot_accession, start_position, end_position, center_position, unit_name, gene_name, gene_id, unit_label,gene_info, piu_info, row_sum,
                   everything())
 
 
@@ -75,7 +82,7 @@ piu_counts_cdr_clinical_unite = function(piu_count_filename,
   {
 
     col_seq = seq(1:ncol(piu_count_sel))
-    which_barcode = col_seq[-c(1:10)]
+    which_barcode = col_seq[-c(1:11)]
 
     #which_barcode = grep("TCGA", colnames(piu_count_sel))
 
@@ -183,6 +190,43 @@ gene_counts_cdr_clinical_unite = function(gene_count_filename,
 
 }
 
+
+
+
+
+
+filter_survival_data = function (surv_info_data,
+                                 surv_status = quo(OS),
+                                 surv_time = quo(OS.time),
+                                 surv_race = quo(os_race),
+                                 min_surv_days = 90)
+  
+  
+{
+  # 
+  # surv_info_data = survival_info[survival_train, ]
+  # surv_status = quo(OS)
+  # surv_time = quo(OS.time)
+  # surv_race = quo(os_race)
+  # min_surv_days = 90
+  # 
+  unit_names = grep("ENSG", colnames(surv_info_data), value = T)
+  
+  
+  filter_surv_data = surv_info_data %>%
+    dplyr::select(barcode, age,gender, !!surv_race, !!surv_status, !!surv_time, one_of(unit_names)) %>%
+    na.omit()%>%
+    # dplyr::arrange(!!surv_status, !!surv_time) %>%
+    dplyr::filter(!!surv_time >= min_surv_days)%>%
+    na.omit()
+  
+  colnames(filter_surv_data) = c("Tumor_Sample_Barcode", "age", "gender", "race", "survival_status","survival_time", unit_names)
+  
+  
+  return(filter_surv_data)
+  
+  
+}
 
 
 
@@ -351,7 +395,7 @@ univariate_survival_significance_adjust_totalMutStage = function(filter_surv_dat
 ##### running the following function requres two addition file describing the stage information and total mutation information.
 ####  Their names are barcode_stage_filename and somatic_mc3_filename
 #### Format of barcode_stage_filename:
-# barcode code_stage
+# Tumor_Sample_Barcode code_stage
 # example-1          1
 # example-2          2
 # example-3          3
@@ -541,15 +585,15 @@ univariate_cox_model_adjustTotalMutationStage = function(piu_filename,
   barcode_df = as.data.frame(table(all_barcodes))%>%
     dplyr::arrange(desc(Freq))
 
-  barcode_totalMut = data.frame(barcode = as.character(barcode_df$all_barcodes),
+  barcode_totalMut = data.frame(Tumor_Sample_Barcode = as.character(barcode_df$all_barcodes),
                                 total_mutation = barcode_df$Freq,
                                 stringsAsFactors = F)
 
 
 
   surv_with_totalMut = barcode_totalMut %>%
-    dplyr::left_join(filter_surv_os_data, by = "barcode")%>%
-    dplyr::left_join(get_barcode_stage, by = "barcode")%>%
+    dplyr::left_join(filter_surv_os_data, by = "Tumor_Sample_Barcode")%>%
+    dplyr::left_join(get_barcode_stage, by = "Tumor_Sample_Barcode")%>%
     na.omit()
 
   test_units = univariate_survival_significance_adjust_totalMutStage(filter_surv_data = surv_with_totalMut,
